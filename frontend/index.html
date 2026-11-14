@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CloudFiles | Armazenamento de arquivos</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <header>
+        <h1>CloudFiles</h1>
+        <p>Armazene e acesse seus arquivos na nuvem.</p>
+    </header>
+
+    <main>
+        <section class="upload-section">
+            <h2>Enviar arquivo</h2>
+
+            <div class="upload-area">
+                <input type="file" id="fileInput">
+                <p>Selecione um arquivo para enviar.</p>
+                <button id="uploadButton">Enviar arquivo</button>
+            </div>
+
+            <p id="uploadStatus"></p>
+        </section>
+
+        <section class="files-section">
+            <h2>Meus arquivos</h2>
+
+            <div id="fileList">
+                <p>Nenhum arquivo carregado.</p>
+            </div>
+        </section>
+    </main>
+
+    <script src="script.js"></script>
+</body>
+</html>
