@@ -1,8 +1,10 @@
 package com.cloudfiles.api.controllers;
 
 import com.cloudfiles.api.dtos.ArquivoResponseDTO;
+import com.cloudfiles.api.exceptions.UploadException;
 import com.cloudfiles.api.services.S3Service;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.HttpStatus;
@@ -10,30 +12,78 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
+import java.util.Set;
 
-// Recebe as requisições do front e encaminha ao S3Service
 @RestController
 @RequestMapping("/api/arquivos")
 public class ArquivoController {
 
     private final S3Service s3Service;
 
+    @Value("${app.upload.max-file-size}")
+    private long tamanhoMaximo;
+
+    private static final Set<String> TIPOS_PERMITIDOS = Set.of(
+            "application/pdf",
+            "image/jpeg",
+            "image/png",
+            "application/msword",
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+    );
+
     public ArquivoController(S3Service s3Service) {
         this.s3Service = s3Service;
     }
 
-    // Recebe um arquivo e solicita o envio ao S3
-    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    // Recebe o arquivo e valida a requisição antes de enviar ao S3
+    @PostMapping
     public ResponseEntity<ArquivoResponseDTO> enviarArquivo(
-            @RequestParam("arquivo") MultipartFile arquivo) {
+            @RequestParam(value = "arquivo", required = false) MultipartFile arquivo,
+            @RequestHeader(value = "Content-Type", required = false) String contentType) {
 
-        if (arquivo == null || arquivo.isEmpty()) {
-            return ResponseEntity.badRequest().build();
+        if (contentType == null ||
+                !contentType.toLowerCase().startsWith(MediaType.MULTIPART_FORM_DATA_VALUE)) {
+            throw new UploadException(
+                    "Envie o arquivo utilizando o formato multipart/form-data.",
+                    HttpStatus.BAD_REQUEST
+            );
+        }
+
+        if (arquivo == null) {
+            throw new UploadException(
+                    "Nenhum arquivo foi enviado.",
+                    HttpStatus.BAD_REQUEST
+            );
+        }
+
+        if (arquivo.isEmpty()) {
+            throw new UploadException(
+                    "O arquivo está vazio.",
+                    HttpStatus.BAD_REQUEST
+            );
         }
 
         if (arquivo.getOriginalFilename() == null ||
                 arquivo.getOriginalFilename().isBlank()) {
-            return ResponseEntity.badRequest().build();
+            throw new UploadException(
+                    "O nome do arquivo é inválido.",
+                    HttpStatus.BAD_REQUEST
+            );
+        }
+
+        if (arquivo.getSize() > tamanhoMaximo) {
+            throw new UploadException(
+                    "O arquivo excede o limite de 10 MB.",
+                    HttpStatus.PAYLOAD_TOO_LARGE
+            );
+        }
+
+        if (arquivo.getContentType() == null ||
+                !TIPOS_PERMITIDOS.contains(arquivo.getContentType())) {
+            throw new UploadException(
+                    "Tipo de arquivo não permitido.",
+                    HttpStatus.UNSUPPORTED_MEDIA_TYPE
+            );
         }
 
         ArquivoResponseDTO resposta = s3Service.upload(arquivo);
@@ -41,15 +91,9 @@ public class ArquivoController {
         return ResponseEntity.status(HttpStatus.CREATED).body(resposta);
     }
 
-    // Solicita a listagem dos arquivos armazenados
+    // Retorna a lista de arquivos armazenados no S3
     @GetMapping
     public ResponseEntity<List<ArquivoResponseDTO>> listarArquivos() {
         return ResponseEntity.ok(s3Service.listarArquivos());
     }
 }
-
-
-//Métodos que tem que ser implementados no S3Service:
-/*public ArquivoResponseDTO upload(MultipartFile arquivo);
-
-public List<ArquivoResponseDTO> listarArquivos(); */
