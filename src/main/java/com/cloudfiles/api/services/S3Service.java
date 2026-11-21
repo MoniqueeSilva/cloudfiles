@@ -29,8 +29,8 @@ public class S3Service {
     @Value("${aws.bucketName}")
     private String bucketName;
 
-    @Value("${aws.region}")
-    private String region;
+    @Value("${cloudfront.domain}")
+    private String cloudfrontDomain;
 
     public S3Service(S3Client s3Client) {
         this.s3Client = s3Client;
@@ -67,11 +67,7 @@ public class S3Service {
                             arquivo.getInputStream(),
                             arquivo.getSize()));
 
-            String url = String.format(
-                    "https://%s.s3.%s.amazonaws.com/%s",
-                    bucketName,
-                    region,
-                    key);
+            String url = gerarUrlCloudFront(key);
 
             return new ArquivoResponseDTO(
                     key,
@@ -117,11 +113,7 @@ public class S3Service {
                     // Mantém o nome armazenado caso não esteja codificado.
                 }
 
-                String url = String.format(
-                        "https://%s.s3.%s.amazonaws.com/%s",
-                        bucketName,
-                        region,
-                        objeto.key());
+                String url = gerarUrlCloudFront(objeto.key());
 
                 arquivos.add(new ArquivoResponseDTO(
                         objeto.key(),
@@ -138,5 +130,9 @@ public class S3Service {
         } while (response.isTruncated());
 
         return arquivos;
+    }
+
+    private String gerarUrlCloudFront(String key) {
+        return String.format("https://%s/%s", cloudfrontDomain, key);
     }
 }
